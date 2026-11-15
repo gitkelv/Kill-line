@@ -29,7 +29,7 @@ Then give:
 
 Rules: 3 to 7 claims. Never invent current numbers or prices; thresholds are relative changes or ratios unless the thesis itself states a number. Be honest about vibes: a claim like "the community is strong" is vibes unless tied to a metric.
 
-Reply with ONLY a JSON object of this shape, no prose, no code fences:
+Use exactly these lowercase keys, with "kind" exactly one of "testable", "partial", "vibes", "testability" a number, and every "kill" filled in. Reply with ONLY a JSON object of this shape, no prose, no code fences:
 {"asset":"","summary":"","testability":0,"weakest":"","verdict":"","claims":[{"claim":"","kind":"testable","metric":"","source":"","kill":"","weight":3,"why":""}]}`;
 
 export default async (req) => {

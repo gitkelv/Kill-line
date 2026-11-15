@@ -198,6 +198,44 @@ function ring(pct) {
     <text x="60" y="68" text-anchor="middle" fill="#f4f3f0" font-family="Space Grotesk, sans-serif" font-weight="600" font-size="30" letter-spacing="-1">${p}%</text>`;
 }
 
+// Models don't always use the exact field names or casing asked for, so map
+// the common variants onto one shape before rendering.
+function pick(o, keys) { for (const k of keys) if (o && o[k] != null && o[k] !== "") return o[k]; return ""; }
+function text(v) { if (v && typeof v === "object") return [v.claim, v.why || v.reason].filter(Boolean).join(": "); return String(v ?? ""); }
+function kindOf(v) {
+  const k = String(v || "").toLowerCase();
+  if (/vibe|untestable|not testable|none|unfalsifiable/.test(k)) return "vibes";
+  if (/partial|partly|proxy|indirect/.test(k)) return "partial";
+  if (/test|measur|falsif/.test(k)) return "testable";
+  return "partial";
+}
+function normalize(raw) {
+  const claims = (pick(raw, ["claims", "Claims", "items"]) || []).map((c) => ({
+    claim: text(pick(c, ["claim", "title", "statement", "text"])),
+    kind: kindOf(pick(c, ["kind", "type", "testability", "category", "label"])),
+    metric: text(pick(c, ["metric", "measure", "indicator"])),
+    source: text(pick(c, ["source", "sources", "data_source", "dataSource"])),
+    kill: text(pick(c, ["kill", "kill_line", "killLine", "kill_criterion", "kill_criteria", "killCriterion", "threshold", "falsifier", "invalidation", "to_test"])),
+    weight: Math.max(1, Math.min(5, Math.round(+pick(c, ["weight", "importance"]) || 3))),
+    why: text(pick(c, ["why", "reason", "rationale", "note"])),
+  })).filter((c) => c.claim);
+  // Testability is computed here from the claims, so the score always matches the cards.
+  const share = { testable: 1, partial: 0.5, vibes: 0 };
+  const total = claims.reduce((a, c) => a + c.weight, 0) || 1;
+  const testability = Math.round(100 * claims.reduce((a, c) => a + c.weight * share[c.kind], 0) / total);
+  let weakest = text(pick(raw, ["weakest", "weakest_link", "weakestLink", "weakest_claim"]));
+  if (!weakest && claims.length) {
+    const w = claims.filter((c) => c.kind !== "testable").sort((a, b) => b.weight - a.weight)[0] || claims[0];
+    weakest = w.claim + (w.why ? " " + w.why : "");
+  }
+  return {
+    asset: text(pick(raw, ["asset", "protocol", "token"])),
+    summary: text(pick(raw, ["summary", "thesis_summary", "thesis"])),
+    verdict: text(pick(raw, ["verdict", "one_liner", "headline"])),
+    weakest, testability, claims,
+  };
+}
+
 function render(d) {
   last = d;
   ring(+d.testability || 0);
@@ -253,7 +291,8 @@ async function run(thesis) {
         } catch { /* keep-alive or partial line */ }
       }
     }
-    const d = parseLoose(out);
+    console.log("SERV Reasoning raw output:", out);
+    const d = normalize(parseLoose(out));
     if (!Array.isArray(d.claims) || !d.claims.length) throw new Error("SERV Reasoning didn't return any claims. Try a longer thesis.");
     st.textContent = `Done. ${d.claims.length} claims found by SERV Reasoning (${model}).`;
     stream.hidden = true;

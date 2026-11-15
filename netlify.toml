@@ -1,2 +1,9 @@
 [build]
+  base = ""
+  command = "echo 'No build step: static page + edge function'"
   publish = "public"
+  edge_functions = "netlify/edge-functions"
+
+[[edge_functions]]
+  path = "/api/kill-line"
+  function = "kill-line"

@@ -73,4 +73,4 @@ export default async (req) => {
   });
 };
 
-export const config = { path: "/api/kill-line" };
+// Route is declared in netlify.toml.

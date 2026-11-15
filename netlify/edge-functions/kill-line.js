@@ -45,19 +45,46 @@ export default async (req) => {
   if (thesis.length > 6000) thesis = thesis.slice(0, 6000);
 
   const model = Netlify.env.get("SERV_MODEL") || "gpt-5.4-mini";
-  const upstream = await fetch(SERV_URL, {
+  const claimSchema = {
+    type: "object", additionalProperties: false,
+    required: ["claim", "kind", "metric", "source", "kill", "weight", "why"],
+    properties: {
+      claim: { type: "string" },
+      kind: { type: "string", enum: ["testable", "partial", "vibes"] },
+      metric: { type: "string" },
+      source: { type: "string" },
+      kill: { type: "string" },
+      weight: { type: "integer" },
+      why: { type: "string" },
+    },
+  };
+  const schema = {
+    type: "object", additionalProperties: false,
+    required: ["asset", "summary", "testability", "weakest", "verdict", "claims"],
+    properties: {
+      asset: { type: "string" }, summary: { type: "string" }, testability: { type: "integer" },
+      weakest: { type: "string" }, verdict: { type: "string" },
+      claims: { type: "array", items: claimSchema },
+    },
+  };
+  const body = {
+    model,
+    stream: true,
+    reasoning_effort: "low",
+    messages: [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: `Thesis:\n"""\n${thesis}\n"""` },
+    ],
+  };
+  const call = (b) => fetch(SERV_URL, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      reasoning_effort: "low",
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: `Thesis:\n"""\n${thesis}\n"""` },
-      ],
-    }),
+    body: JSON.stringify(b),
   });
+  // Structured output pins the exact field names; if the model or gateway
+  // rejects it, fall back to the plain JSON instruction in the system prompt.
+  let upstream = await call({ ...body, response_format: { type: "json_schema", json_schema: { name: "kill_line", strict: true, schema } } });
+  if (!upstream.ok && upstream.status >= 400 && upstream.status < 500) upstream = await call(body);
 
   if (!upstream.ok || !upstream.body) {
     const detail = (await upstream.text().catch(() => "")).slice(0, 300);

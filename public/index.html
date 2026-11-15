@@ -215,7 +215,7 @@ function normalize(raw) {
     kind: kindOf(pick(c, ["kind", "type", "testability", "category", "label"])),
     metric: text(pick(c, ["metric", "measure", "indicator"])),
     source: text(pick(c, ["source", "sources", "data_source", "dataSource"])),
-    kill: text(pick(c, ["kill", "kill_line", "killLine", "kill_criterion", "kill_criteria", "killCriterion", "threshold", "falsifier", "invalidation", "to_test"])),
+    kill: text(pick(c, ["kill", "kill_line", "killLine", "kill_criterion", "kill_criteria", "killCriterion", "threshold", "falsifier", "invalidation", "to_test", "kill_condition", "killCondition", "disproof", "disconfirm", "refuted_if", "wrong_if", "proven_wrong_if", "falsification", "trigger"])),
     weight: Math.max(1, Math.min(5, Math.round(+pick(c, ["weight", "importance"]) || 3))),
     why: text(pick(c, ["why", "reason", "rationale", "note"])),
   })).filter((c) => c.claim);
@@ -292,6 +292,7 @@ async function run(thesis) {
       }
     }
     console.log("SERV Reasoning raw output:", out);
+    if (new URLSearchParams(location.search).has("raw")) { const pre = document.createElement("pre"); pre.textContent = out; pre.style.cssText = "white-space:pre-wrap;font:12px/1.4 monospace;color:#b9b7b0;margin-top:14px"; $("form").append(pre); }
     const d = normalize(parseLoose(out));
     if (!Array.isArray(d.claims) || !d.claims.length) throw new Error("SERV Reasoning didn't return any claims. Try a longer thesis.");
     st.textContent = `Done. ${d.claims.length} claims found by SERV Reasoning (${model}).`;
